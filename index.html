@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste d'invités - Anniversaire</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 12px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .mode-btn:hover:not(.active) {
+            border-color: #667eea;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status-local {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .status-connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .firebase-config {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #856404;
+            display: none;
+        }
+
+        .firebase-config.show {
+            display: block;
+        }
+
+        .firebase-config h3 {
+            margin-bottom: 10px;
+            color: #856404;
+        }
+
+        .firebase-config code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .config-form {
+            display: grid;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .config-form input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .add-guest-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 14px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid;
+        }
+
+        .stat-card.total { border-left-color: #6c757d; }
+        .stat-card.confirmed { border-left-color: #28a745; }
+        .stat-card.declined { border-left-color: #dc3545; }
+        .stat-card.pending { border-left-color: #ffc107; }
+
+        .stat-number {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .guest-list {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .guest-item {
+            padding: 15px;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .guest-item:last-child {
+            border-bottom: none;
+        }
+
+        .guest-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .guest-info {
+            flex: 1;
+        }
+
+        .guest-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .guest-details {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            flex-shrink: 0;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status-confirmed {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-declined {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .guest-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+            flex: 1;
+            text-align: center;
+        }
+
+        .btn-edit {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-edit:hover, .btn-success:hover, .btn-danger:hover, .btn-secondary:hover {
+            opacity: 0.9;
+        }
+
+        .edit-form {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border: 2px solid #17a2b8;
+        }
+
+        .edit-form .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 80px;
+            gap: 8px;
+            margin-bottom: 10px;
+            align-items: end;
+        }
+
+        .edit-form input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+                margin: 5px;
+                border-radius: 12px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+                margin-bottom: 15px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .edit-form .form-row {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .btn-small {
+                flex: 1;
+                min-width: calc(25% - 6px);
+            }
+        }
+
+        @media (min-width: 481px) and (max-width: 768px) {
+            .container {
+                max-width: 90%;
+                padding: 20px;
+            }
+            
+            .stats {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (min-width: 769px) {
+            .container {
+                max-width: 800px;
+                padding: 30px;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr 1fr 100px;
+            }
+            
+            .stats {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Liste d'invités - Anniversaire</h1>
+
+        <div class="mode-selector">
+            <div class="mode-btn active" onclick="switchMode('local')">
+                💾 Mode Local
+            </div>
+            <div class="mode-btn" onclick="switchMode('firebase')">
+                ☁️ Mode Synchronisé
+            </div>
+        </div>
+
+        <div id="connectionStatus" class="connection-status status-local">
+            💾 Mode local - Données sauvegardées dans le navigateur
+        </div>
+
+        <div id="firebaseConfig" class="firebase-config">
+            <h3>⚙️ Configuration Firebase</h3>
+            <p>Pour activer la synchronisation entre appareils, configurez votre Firebase :</p>
+            <div class="config-form">
+                <input type="text" id="apiKey" placeholder="API Key">
+                <input type="text" id="authDomain" placeholder="Auth Domain">
+                <input type="text" id="databaseURL" placeholder="Database URL">
+                <input type="text" id="projectId" placeholder="Project ID">
+                <button class="btn btn-primary" onclick="connectFirebase()">Se connecter</button>
+            </div>
+            <p><small>
+                1. Allez sur <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a><br>
+                2. Créez un projet et activez "Realtime Database"<br>
+                3. Copiez les infos de configuration ici
+            </small></p>
+        </div>
+        
+        <div class="add-guest-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="firstName">Prénom</label>
+                    <input type="text" id="firstName" placeholder="Prénom" maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label for="lastName">Nom</label>
+                    <input type="text" id="lastName" placeholder="Nom" maxlength="30">
+                </div>
+                <div class="form-group">
+                    <label for="companions">Accompagnants</label>
+                    <input type="number" id="companions" placeholder="0" min="0" max="10" value="0">
+                </div>
+            </div>
+            <div class="form-group full-width">
+                <button class="btn btn-primary" onclick="addGuest()">Ajouter invité</button>
+            </div>
+            <div class="form-group full-width" style="margin-top: 10px;">
+                <button class="btn btn-secondary" onclick="exportList()" style="background: #17a2b8;">📄 Exporter la liste</button>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card total">
+                <div class="stat-number" id="totalPersons">0</div>
+                <div class="stat-label">Total personnes</div>
+            </div>
+            <div class="stat-card confirmed">
+                <div class="stat-number" id="confirmedPersons">0</div>
+                <div class="stat-label">Confirmées</div>
+            </div>
+            <div class="stat-card declined">
+                <div class="stat-number" id="declinedPersons">0</div>
+                <div class="stat-label">Refusées</div>
+            </div>
+            <div class="stat-card pending">
+                <div class="stat-number" id="pendingPersons">0</div>
+                <div class="stat-label">En attente</div>
+            </div>
+        </div>
+
+        <div class="guest-list" id="guestList">
+            <div class="empty-state">
+                <div class="icon">👥</div>
+                <h3>Aucun invité ajouté</h3>
+                <p>Commencez par ajouter des invités à votre liste</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let guests = [];
+        let currentMode = 'local';
+        let database = null;
+        let guestsRef = null;
+
+        // Charger les données au démarrage
+        function init() {
+            loadFromLocalStorage();
+            updateDisplay();
+        }
+
+        function switchMode(mode) {
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            currentMode = mode;
+            const firebaseConfig = document.getElementById('firebaseConfig');
+            const connectionStatus = document.getElementById('connectionStatus');
+            
+            if (mode === 'firebase') {
+                firebaseConfig.classList.add('show');
+                connectionStatus.className = 'connection-status status-error';
+                connectionStatus.textContent = '❌ Firebase non configuré';
+            } else {
+                firebaseConfig.classList.remove('show');
+                connectionStatus.className = 'connection-status status-local';
+                connectionStatus.textContent = '💾 Mode local - Données sauvegardées dans le navigateur';
+                // Déconnecter Firebase si connecté
+                if (guestsRef) {
+                    guestsRef.off();
+                    database = null;
+                    guestsRef = null;
+                }
+            }
+        }
+
+        function connectFirebase() {
+            const apiKey = document.getElementById('apiKey').value;
+            const authDomain = document.getElementById('authDomain').value;
+            const databaseURL = document.getElementById('databaseURL').value;
+            const projectId = document.getElementById('projectId').value;
+
+            if (!apiKey || !authDomain || !databaseURL || !projectId) {
+                alert('Veuillez remplir tous les champs de configuration Firebase');
+                return;
+            }
+
+            // Charger Firebase dynamiquement
+            const script1 = document.createElement('script');
+            script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js';
+            script1.onload = function() {
+                const script2 = document.createElement('script');
+                script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js';
+                script2.onload = function() {
+                    initFirebase({ apiKey, authDomain, databaseURL, projectId });
+                };
+                document.head.appendChild(script2);
+            };
+            document.head.appendChild(script1);
+        }
+
+        function initFirebase(config) {
+            try {
+                const app = firebase.initializeApp(config);
+                database = firebase.database();
+                guestsRef = database.ref('guests');
+                
+                // Synchroniser les données locales vers Firebase
+                guests.forEach(guest => {
+                    guestsRef.child(guest.id).set(guest);
+                });
+                
+                // Écouter les changements
+                guestsRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    guests = data ? Object.values(data) : [];
+                    updateDisplay();
+                    saveToLocalStorage();
+                });
+
+                updateConnectionStatus('connected', '✅ Synchronisé avec Firebase');
+            } catch (error) {
+                console.error('Erreur Firebase:', error);
+                updateConnectionStatus('error', '❌ Erreur de connexion Firebase');
+            }
+        }
+
+        function updateConnectionStatus(status, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = `connection-status status-${status}`;
+            statusEl.textContent = message;
+        }
+
+        function saveToLocalStorage() {
+            try {
+                window.localStorage.setItem('birthday_guests', JSON.stringify(guests));
+            } catch (e) {
+                console.warn('Impossible de sauvegarder dans localStorage');
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const saved = window.localStorage.getItem('birthday_guests');
+                if (saved) {
+                    guests = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.warn('Impossible de charger depuis localStorage');
+                guests = [];
+            }
+        }
+
+        function addGuest() {
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const companions = parseInt(document.getElementById('companions').value) || 0;
+            
+            if (firstName === '' && lastName === '') {
+                alert('Veuillez entrer au moins un prénom ou un nom');
+                return;
+            }
+
+            const fullName = `${firstName} ${lastName}`.trim();
+            if (guests.some(guest => guest.fullName.toLowerCase() === fullName.toLowerCase())) {
+                alert('Cet invité est déjà dans la liste');
+                return;
+            }
+
+            const guest = {
+                id: Date.now(),
+                firstName: firstName,
+                lastName: lastName,
+                fullName: fullName,
+                companions: companions,
+                status: 'pending',
+                createdAt: Date.now()
+            };
+
+            if (currentMode === 'firebase' && guestsRef) {
+                guestsRef.child(guest.id).set(guest);
+            } else {
+                guests.push(guest);
+                updateDisplay();
+                saveToLocalStorage();
+            }
+            
+            // Reset form
+            document.getElementById('firstName').value = '';
+            document.getElementById('lastName').value = '';
+            document.getElementById('companions').value = '0';
+        }
+
+        function updateGuestStatus(id, status) {
+            if (currentMode === 'firebase' && guestsRef) {
+                guestsRef.child(id).update({ status: status });
+            } else {
+                const guest = guests.find(g => g.id === id);
+                if (guest) {
+                    guest.status = status;
+                    updateDisplay();
+                    saveToLocalStorage();
+                }
+            }
+        }
+
+        function removeGuest(id) {
+            if (confirm('Êtes-vous sûr de vouloir supprimer cet invité ?')) {
+                if (currentMode === 'firebase' && guestsRef) {
+                    guestsRef.child(id).remove();
+                } else {
+                    guests = guests.filter(g => g.id !== id);
+                    updateDisplay();
+                    saveToLocalStorage();
+                }
+            }
+        }
+
+        function editGuest(id) {
+            const guest = guests.find(g => g.id === id);
+            if (!guest) return;
+
+            // Fermer les autres formulaires d'édition
+            document.querySelectorAll('.edit-form').forEach(form => form.remove());
+
+            // Créer le formulaire d'édition
+            const guestItem = document.querySelector(`[data-guest-id="${id}"]`);
+            const editForm = document.createElement('div');
+            editForm.className = 'edit-form';
+            editForm.innerHTML = `
+                <div class="form-row">
+                    <input type="text" id="edit-firstName-${id}" value="${guest.firstName}" placeholder="Prénom">
+                    <input type="text" id="edit-lastName-${id}" value="${guest.lastName}" placeholder="Nom">
+                    <input type="number" id="edit-companions-${id}" value="${guest.companions}" min="0" max="10">
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-success btn-small" onclick="saveEdit(${id})">✓ Sauver</button>
+                    <button class="btn btn-secondary btn-small" onclick="cancelEdit(${id})">✗ Annuler</button>
+                </div>
+            `;
+            
+            guestItem.appendChild(editForm);
+        }
+
+        function saveEdit(id) {
+            const firstName = document.getElementById(`edit-firstName-${id}`).value.trim();
+            const lastName = document.getElementById(`edit-lastName-${id}`).value.trim();
+            const companions = parseInt(document.getElementById(`edit-companions-${id}`).value) || 0;
+
+            if (firstName === '' && lastName === '') {
+                alert('Veuillez entrer au moins un prénom ou un nom');
+                return;
+            }
+
+            const fullName = `${firstName} ${lastName}`.trim();
+            
+            // Vérifier les doublons (sauf pour l'invité actuel)
+            if (guests.some(g => g.id != id && g.fullName.toLowerCase() === fullName.toLowerCase())) {
+                alert('Un invité avec ce nom existe déjà');
+                return;
+            }
+
+            const updates = {
+                firstName: firstName,
+                lastName: lastName,
+                fullName: fullName,
+                companions: companions
+            };
+
+            if (currentMode === 'firebase' && guestsRef) {
+                guestsRef.child(id).update(updates);
+            } else {
+                const guest = guests.find(g => g.id == id);
+                if (guest) {
+                    Object.assign(guest, updates);
+                    updateDisplay();
+                    saveToLocalStorage();
+                }
+            }
+
+            cancelEdit(id);
+        }
+
+        function cancelEdit(id) {
+            const editForm = document.querySelector(`[data-guest-id="${id}"] .edit-form`);
+            if (editForm) {
+                editForm.remove();
+            }
+        }
+
+        function updateDisplay() {
+            updateStats();
+            updateGuestList();
+        }
+
+        function updateStats() {
+            const totalPersons = guests.reduce((sum, guest) => sum + 1 + guest.companions, 0);
+            const confirmedPersons = guests.filter(g => g.status === 'confirmed')
+                .reduce((sum, guest) => sum + 1 + guest.companions, 0);
+            const declinedPersons = guests.filter(g => g.status === 'declined')
+                .reduce((sum, guest) => sum + 1 + guest.companions, 0);
+            const pendingPersons = guests.filter(g => g.status === 'pending')
+                .reduce((sum, guest) => sum + 1 + guest.companions, 0);
+
+            document.getElementById('totalPersons').textContent = totalPersons;
+            document.getElementById('confirmedPersons').textContent = confirmedPersons;
+            document.getElementById('declinedPersons').textContent = declinedPersons;
+            document.getElementById('pendingPersons').textContent = pendingPersons;
+        }
+
+        function updateGuestList() {
+            const listContainer = document.getElementById('guestList');
+            
+            if (guests.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">👥</div>
+                        <h3>Aucun invité ajouté</h3>
+                        <p>Commencez par ajouter des invités à votre liste</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            guests.forEach(guest => {
+                const statusBadge = getStatusBadge(guest.status);
+                const statusButtons = getStatusButtons(guest.id, guest.status);
+                const companionsText = guest.companions > 0 ? `+ ${guest.companions} accompagnant${guest.companions > 1 ? 's' : ''}` : 'Seul(e)';
+                const totalPersons = 1 + guest.companions;
+                
+                html += `
+                    <div class="guest-item" data-guest-id="${guest.id}">
+                        <div class="guest-header">
+                            <div class="guest-info">
+                                <div class="guest-name">${escapeHtml(guest.fullName)}</div>
+                                <div class="guest-details">${companionsText} • Total: ${totalPersons} personne${totalPersons > 1 ? 's' : ''}</div>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                        <div class="guest-actions">
+                            ${statusButtons}
+                            <button class="btn btn-edit btn-small" onclick="editGuest(${guest.id})">
+                                ✏️ Modifier
+                            </button>
+                            <button class="btn btn-secondary btn-small" onclick="removeGuest(${guest.id})">
+                                🗑️ Supprimer
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            listContainer.innerHTML = html;
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'pending': '<span class="status-badge status-pending">En attente</span>',
+                'confirmed': '<span class="status-badge status-confirmed">Confirmé</span>',
+                'declined': '<span class="status-badge status-declined">Refusé</span>'
+            };
+            return badges[status] || badges['pending'];
+        }
+
+        function getStatusButtons(id, currentStatus) {
+            if (currentStatus === 'pending') {
+                return `
+                    <button class="btn btn-success btn-small" onclick="updateGuestStatus(${id}, 'confirmed')">
+                        ✓ Confirmer
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="updateGuestStatus(${id}, 'declined')">
+                        ✗ Refuser
+                    </button>
+                `;
+            } else {
+                return `
+                    <button class="btn btn-secondary btn-small" onclick="updateGuestStatus(${id}, 'pending')">
+                        ↻ Remettre en attente
+                    </button>
+                `;
+            }
+        }
+
+        function exportList() {
+            if (guests.length === 0) {
+                alert('Aucun invité à exporter');
+                return;
+            }
+
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('fr-FR');
+            const timeStr = now.toLocaleTimeString('fr-FR');
+            
+            let content = `Liste d'invités - Anniversaire\n`;
+            content += `Exportée le ${dateStr} à ${timeStr}\n`;
+            content += `${'='.repeat(50)}\n\n`;
+
+            // Statistiques
+            const total = guests.length;
+            const confirmed = guests.filter(g => g.status === 'confirmed').length;
+            const declined = guests.filter(g => g.status === 'declined').length;
+            const pending = guests.filter(g => g.status === 'pending').length;
+            const totalPersons = guests.reduce((sum, guest) => sum + 1 + guest.companions, 0);
+            const confirmedPersons = guests.filter(g => g.status === 'confirmed')
+                .reduce((sum, guest) => sum + 1 + guest.companions, 0);
+
+            content += `RÉSUMÉ\n`;
+            content += `--------\n`;
+            content += `Total invités: ${total}\n`;
+            content += `Confirmés: ${confirmed}\n`;
+            content += `Refusés: ${declined}\n`;
+            content += `En attente: ${pending}\n`;
+            content += `Total personnes: ${totalPersons}\n`;
+            content += `Personnes confirmées: ${confirmedPersons}\n\n`;
+
+            // Liste détaillée par statut
+            const statusLabels = {
+                'confirmed': 'INVITÉS CONFIRMÉS',
+                'pending': 'INVITÉS EN ATTENTE',
+                'declined': 'INVITÉS AYANT REFUSÉ'
+            };
+
+            ['confirmed', 'pending', 'declined'].forEach(status => {
+                const guestsWithStatus = guests.filter(g => g.status === status);
+                if (guestsWithStatus.length > 0) {
+                    content += `${statusLabels[status]} (${guestsWithStatus.length})\n`;
+                    content += `${'-'.repeat(statusLabels[status].length + 5)}\n`;
+                    
+                    guestsWithStatus.forEach((guest, index) => {
+                        const companionsText = guest.companions > 0 ? 
+                            ` + ${guest.companions} accompagnant${guest.companions > 1 ? 's' : ''}` : '';
+                        const totalPersons = 1 + guest.companions;
+                        
+                        content += `${index + 1}. ${guest.fullName}${companionsText}\n`;
+                        content += `   Total: ${totalPersons} personne${totalPersons > 1 ? 's' : ''}\n`;
+                    });
+                    content += `\n`;
+                }
+            });
+
+            // Créer et télécharger le fichier
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `liste_invites_anniversaire_${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event listeners
+        ['firstName', 'lastName', 'companions'].forEach(id => {
+            document.getElementById(id).addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addGuest();
+                }
+            });
+        });
+
+        // Initialisation
+        init();
+    </script>
+</body>
+</html>
