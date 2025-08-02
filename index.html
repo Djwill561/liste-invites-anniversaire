@@ -383,6 +383,25 @@
             opacity: 0.3;
         }
 
+        .share-info {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #1565c0;
+        }
+
+        .share-url {
+            background: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+        }
+
         /* Responsive */
         @media (max-width: 480px) {
             .container {
@@ -443,6 +462,13 @@
     <div class="container">
         <h1>🎉 Liste d'invités - Anniversaire</h1>
 
+        <div class="share-info">
+            <h3>📤 Partage de la liste</h3>
+            <p><strong>Partagez cette URL pour gérer la liste ensemble :</strong></p>
+            <div class="share-url" id="shareUrl">Chargement de l'URL...</div>
+            <p><small>💡 Vous pouvez tous les deux ajouter/modifier les invités en temps réel !</small></p>
+        </div>
+
         <div class="mode-selector">
             <div class="mode-btn active" onclick="switchMode('local')">
                 💾 Mode Local
@@ -458,7 +484,7 @@
 
         <div id="firebaseConfig" class="firebase-config">
             <h3>⚙️ Configuration Firebase</h3>
-            <p>Pour activer la synchronisation entre appareils, configurez votre Firebase :</p>
+            <p>Pour activer la synchronisation en temps réel entre vos appareils :</p>
             <div class="config-form">
                 <input type="text" id="apiKey" placeholder="API Key">
                 <input type="text" id="authDomain" placeholder="Auth Domain">
@@ -530,10 +556,17 @@
         let database = null;
         let guestsRef = null;
 
+        // Afficher l'URL de partage
+        function displayShareUrl() {
+            const shareUrlElement = document.getElementById('shareUrl');
+            shareUrlElement.textContent = window.location.href;
+        }
+
         // Charger les données au démarrage
         function init() {
-            loadFromLocalStorage();
+            loadFromStorage();
             updateDisplay();
+            displayShareUrl();
         }
 
         function switchMode(mode) {
@@ -547,7 +580,7 @@
             if (mode === 'firebase') {
                 firebaseConfig.classList.add('show');
                 connectionStatus.className = 'connection-status status-error';
-                connectionStatus.textContent = '❌ Firebase non configuré';
+                connectionStatus.textContent = '❌ Firebase non configuré - Activez la synchronisation';
             } else {
                 firebaseConfig.classList.remove('show');
                 connectionStatus.className = 'connection-status status-local';
@@ -562,10 +595,10 @@
         }
 
         function connectFirebase() {
-            const apiKey = document.getElementById('apiKey').value;
-            const authDomain = document.getElementById('authDomain').value;
-            const databaseURL = document.getElementById('databaseURL').value;
-            const projectId = document.getElementById('projectId').value;
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const authDomain = document.getElementById('authDomain').value.trim();
+            const databaseURL = document.getElementById('databaseURL').value.trim();
+            const projectId = document.getElementById('projectId').value.trim();
 
             if (!apiKey || !authDomain || !databaseURL || !projectId) {
                 alert('Veuillez remplir tous les champs de configuration Firebase');
@@ -573,22 +606,28 @@
             }
 
             // Charger Firebase dynamiquement
-            const script1 = document.createElement('script');
-            script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js';
-            script1.onload = function() {
-                const script2 = document.createElement('script');
-                script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js';
-                script2.onload = function() {
-                    initFirebase({ apiKey, authDomain, databaseURL, projectId });
+            if (!window.firebase) {
+                const script1 = document.createElement('script');
+                script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js';
+                script1.onload = function() {
+                    const script2 = document.createElement('script');
+                    script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js';
+                    script2.onload = function() {
+                        initFirebase({ apiKey, authDomain, databaseURL, projectId });
+                    };
+                    document.head.appendChild(script2);
                 };
-                document.head.appendChild(script2);
-            };
-            document.head.appendChild(script1);
+                document.head.appendChild(script1);
+            } else {
+                initFirebase({ apiKey, authDomain, databaseURL, projectId });
+            }
         }
 
         function initFirebase(config) {
             try {
-                const app = firebase.initializeApp(config);
+                if (firebase.apps.length === 0) {
+                    firebase.initializeApp(config);
+                }
                 database = firebase.database();
                 guestsRef = database.ref('guests');
                 
@@ -602,13 +641,39 @@
                     const data = snapshot.val();
                     guests = data ? Object.values(data) : [];
                     updateDisplay();
-                    saveToLocalStorage();
+                    saveToStorage();
                 });
 
-                updateConnectionStatus('connected', '✅ Synchronisé avec Firebase');
+                updateConnectionStatus('connected', '✅ Synchronisé avec Firebase - Modifications en temps réel !');
+                
+                // Sauvegarder la config Firebase
+                saveFirebaseConfig(config);
             } catch (error) {
                 console.error('Erreur Firebase:', error);
-                updateConnectionStatus('error', '❌ Erreur de connexion Firebase');
+                updateConnectionStatus('error', '❌ Erreur de connexion Firebase - Vérifiez votre configuration');
+            }
+        }
+
+        function saveFirebaseConfig(config) {
+            try {
+                localStorage.setItem('firebase_config', JSON.stringify(config));
+            } catch (e) {
+                console.warn('Impossible de sauvegarder la config Firebase');
+            }
+        }
+
+        function loadFirebaseConfig() {
+            try {
+                const saved = localStorage.getItem('firebase_config');
+                if (saved) {
+                    const config = JSON.parse(saved);
+                    document.getElementById('apiKey').value = config.apiKey || '';
+                    document.getElementById('authDomain').value = config.authDomain || '';
+                    document.getElementById('databaseURL').value = config.databaseURL || '';
+                    document.getElementById('projectId').value = config.projectId || '';
+                }
+            } catch (e) {
+                console.warn('Impossible de charger la config Firebase');
             }
         }
 
@@ -618,17 +683,17 @@
             statusEl.textContent = message;
         }
 
-        function saveToLocalStorage() {
+        function saveToStorage() {
             try {
-                window.localStorage.setItem('birthday_guests', JSON.stringify(guests));
+                localStorage.setItem('birthday_guests', JSON.stringify(guests));
             } catch (e) {
-                console.warn('Impossible de sauvegarder dans localStorage');
+                console.warn('localStorage non disponible, données temporaires');
             }
         }
 
-        function loadFromLocalStorage() {
+        function loadFromStorage() {
             try {
-                const saved = window.localStorage.getItem('birthday_guests');
+                const saved = localStorage.getItem('birthday_guests');
                 if (saved) {
                     guests = JSON.parse(saved);
                 }
@@ -669,7 +734,7 @@
             } else {
                 guests.push(guest);
                 updateDisplay();
-                saveToLocalStorage();
+                saveToStorage();
             }
             
             // Reset form
@@ -686,7 +751,7 @@
                 if (guest) {
                     guest.status = status;
                     updateDisplay();
-                    saveToLocalStorage();
+                    saveToStorage();
                 }
             }
         }
@@ -698,7 +763,7 @@
                 } else {
                     guests = guests.filter(g => g.id !== id);
                     updateDisplay();
-                    saveToLocalStorage();
+                    saveToStorage();
                 }
             }
         }
@@ -761,7 +826,7 @@
                 if (guest) {
                     Object.assign(guest, updates);
                     updateDisplay();
-                    saveToLocalStorage();
+                    saveToStorage();
                 }
             }
 
@@ -954,7 +1019,9 @@
         });
 
         // Initialisation
-        init();
+        window.addEventListener('load', function() {
+            init();
+            loadFirebaseConfig();
+        });
     </script>
 </body>
-</html>
